@@ -1,0 +1,8 @@
+self	schweinfurthii	370
+ref	schweinfurthii	118
+self	troglodytes	49 
+ref	troglodytes	24
+self	ellioti	232
+ref	ellioti	71
+self	verus	75
+ref	verus	28

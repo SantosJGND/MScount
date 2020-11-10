@@ -1,0 +1,6 @@
+self	AFR	103
+ref	AFR	49
+self	EUR	327
+ref	EUR	161
+self	ASN	301
+ref	ASN	147

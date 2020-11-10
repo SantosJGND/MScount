@@ -1,0 +1,4 @@
+*.gz
+*.pyc
+*.DS_Store
+/deployment_agave_v1.3/__pycache__/

@@ -92,10 +92,6 @@ from INFO_db import INFO_dict
 
 ########
 ########
-fig_dir= 'Figures/kmers_compound'
-os.makedirs(fig_dir, exist_ok=True)
-fig_dir= fig_dir + '/'
-
 
 ## directories
 main_dir= os.getcwd() + '/'

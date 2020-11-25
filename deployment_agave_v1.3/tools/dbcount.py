@@ -10,7 +10,7 @@ from factor_tools.factor_tools import (
 
 ##################
 
-def read_simCounts(simdb,tag_split= 'C',pop_tag= '_ss'):
+def read_simCounts_old(simdb,tag_split= 'C',pop_tag= '_ss', si_max= 0):
 	'''
 	read file of individual mutation type counts. 
 	first 3 columns= simID, pop, ind. 
@@ -23,22 +23,86 @@ def read_simCounts(simdb,tag_split= 'C',pop_tag= '_ss'):
 	header= counts[0]
 	muts= header.strip().split('\t')[3:]
 	counts= [x.strip().split('\t') for x in counts[1:]]
+
 	counts= np.array(counts)
+
+	if si_max:
+		nsamps= np.array(counts[:,2],dtype= int)
+		nkeep= (nsamps <= si_max) | (nsamps == max(nsamps))
+		counts= counts[nkeep,:]
+
 	pop_names= counts[:,1]
+
 	for idx in range(len(pop_names)):
 		pop= pop_names[idx]
 		if pop_tag in pop:
 			pop= pop[len(pop_tag):].split('.')[0]
-			pop_names[idx]= pop 
+			pop_names[idx]= pop
 
 	counts[:,1]= pop_names
 	
 	return counts, muts, header
 
 
+def read_simCounts(simdb,tag_split= 'C',pop_tag= '_ss', si_max= 0):
+	'''
+	read file of individual mutation type counts. 
+	first 3 columns= simID, pop, ind. 
+	header= True.
+	'''
+	with open(simdb,'r') as fp:
+		counts= fp.readlines()
+
+	header= counts[0]
+	muts= header.strip().split('\t')[3:]
+	counts= [x.strip().split('\t') for x in counts[1:]]
+
+	counts= np.array(counts)
+	pop_names= np.array(counts[:,1])
+	pop_dict= {}
+	pop_set= []
+
+	for idx in range(counts.shape[0]):
+
+		pop= pop_names[idx]
+		if pop_tag in pop:
+			pop= pop[len(pop_tag):].split('.')[0]
+			pop_names[idx]= pop
+
+		if pop in pop_set:
+			pop_dict[pop].append(idx)
+		else:
+			pop_set.append(pop)
+			pop_dict[pop]= [idx]
 
 
-def info_array_collect(db_dir, 
+	keep_array= []
+	print("count array shape: {}".format(counts.shape))
+
+	
+	for pop,idxs in pop_dict.items():
+		print(pop)
+		counts[idxs,1]= pop
+		# counts
+		nsamps= np.array(counts[idxs,2],dtype= int)
+		print('max nsamp: {}'.format(max(nsamps)))
+
+		nkeep= (nsamps <= si_max) | (nsamps == max(nsamps))
+
+		td= nsamps[nkeep]
+
+		nkeep= list(np.array(idxs)[nkeep])
+		keep_array.extend(nkeep)
+
+	keep_array= sorted(keep_array)
+	counts= counts[keep_array,:]
+	print(counts.shape)
+
+	return counts, muts, header
+
+
+
+def info_array_collect(db_dir, si_max= 100,
 					row= 24,col= 4, tag_split= 'C', tag_sim= '_ss'):
 	'''
 	extract mutation count sub-samples from across simulation count dbs. 
@@ -47,15 +111,14 @@ def info_array_collect(db_dir,
 	list_neigh= os.listdir(db_dir)
 	lines= []
 
-	for dbf in list_neigh[:1]:
+	for dbf in list_neigh[:4]:
 		simdb= db_dir + dbf
 		print('reading {}'.format(simdb))
-		counts, muts, header= read_simCounts(simdb)
+		print('base: {}'.format(batch))
+
+		counts, muts, header= read_simCounts(simdb, si_max= si_max)
 
 		batch= counts[0][0]
-		print('base: {}'.format(batch))
-		print(counts.shape)
-
 		lines.append(counts)
 
 	lines= np.concatenate(tuple(lines),axis= 0)

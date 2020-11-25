@@ -12,6 +12,37 @@ def recursively_default_dict():
     return collections.defaultdict(recursively_default_dict)
 
 
+def get_cdf(value,observed):
+    
+    surface= np.nan_to_num(observed)
+    surface= sorted(observed)
+
+    td= []
+    idx= 0
+    flag= 0
+    while flag == 0:
+        if idx >= len(surface):
+            flag= 1
+            continue
+        
+        if surface[idx] <= value:
+            td.append(idx)
+        else:
+            flag= 1
+
+        idx+= 1
+
+    return len(td) / float(len(observed))
+
+def cdf_borders(observed,pval= 0.01):
+
+    surface= np.nan_to_num(observed)
+    surface= sorted(observed)
+
+    total= int((len(observed) - 1) * pval)
+
+    return observed[total]
+
 
 import argparse
 
@@ -29,14 +60,8 @@ parser.add_argument('--data', type=str,
 parser.add_argument('--minS', type=int, # ignore pops if Nsamp < minS
                     default=5)
 
-parser.add_argument('--samp', type=int, # if stepup= increment = max Nsamp, else = min (Nsamp).
+parser.add_argument('--samp', type=int, # max Nsamp in plots.
                     default=200)
-
-parser.add_argument('--steps', type=int, # Nber of Nsamp steps
-                    default=50)
-
-parser.add_argument('--stepup', type=str, # type of analysis - increment / other.
-                    default='increment')
 
 parser.add_argument('--simsN', type=int, # Numberr of simulations to read from available. random. 
                     default=0)           # if 0 uses all sims in sims_dir. 
@@ -45,7 +70,11 @@ parser.add_argument('--collapsed', type=bool, # collapse mutation counts.
                     default=False)
 
 parser.add_argument('--pval', type=float, # Inclusion into H0 pval. 
-                    default=0.01)           
+                    default=0.01)
+
+parser.add_argument('--cdf', action="store_true", # collapse mutation counts.
+                    default=False)
+
 
 
 args = parser.parse_args()
@@ -53,6 +82,15 @@ args = parser.parse_args()
 
 ###############
 species= args.species
+row= [64,32][int(args.collapsed)]
+col= 3
+
+sims_target= args.species
+
+
+sampling= [args.samp]
+sampling_str= str(sampling[0])
+
 ############### plots
 
 import matplotlib
@@ -87,9 +125,8 @@ db_dir= INFO_dict[species]['dirs'][args.data]
 db_neigh= os.listdir(db_dir)
 
 
-info_array, muts, counts= info_array_collect(db_dir)
+info_array, muts, counts= info_array_collect(db_dir, si_max= args.samp)
 
-#print(info_array[:10])
 
 pops= INFO_dict[args.species]['pop_dict'].values()
 pop_list= list(pops)
@@ -133,18 +170,35 @@ for stat_request in stat_used:
     }
 
     ######### Across references.
-    ref_stats= {
-        z: {
-            'mean': np.nanmean(g),
-            'ucl': np.nanmean(g) + std_threshold*np.nanstd(g),
-            'lcl': np.nanmean(g) - std_threshold*np.nanstd(g),
-            'std': np.nanstd(g)
-        } for z,g in ref_dict.items()
-    }
 
-    average_cdf= {
-        z: [norm.cdf(x,loc= ref_stats[z]['mean'],scale= ref_stats[z]['std']) for x in pop_diff_dict[z]['mean']] for z in pop_diff_dict.keys()
-    }
+    if args.cdf:
+        average_cdf= {
+            z: [get_cdf(x,ref_dict[z]) for x in pop_diff_dict[z]['mean']] for z in pop_diff_dict.keys()
+            }
+
+        ref_stats= {
+            z: {
+                'mean': np.median(g),
+                'ucl': cdf_borders(observed,pval= 1-pval_threshold),
+                'lcl': cdf_borders(observed,pval= pval_threshold),
+                'std': np.nanstd(g)
+            } for z,g in ref_dict.items()
+        }
+
+    else:
+
+        ref_stats= {
+            z: {
+                'mean': np.nanmean(g),
+                'ucl': np.nanmean(g) + std_threshold*np.nanstd(g),
+                'lcl': np.nanmean(g) - std_threshold*np.nanstd(g),
+                'std': np.nanstd(g)
+            } for z,g in ref_dict.items()
+        }
+        average_cdf= {
+            z: [norm.cdf(x,loc= ref_stats[z]['mean'],scale= ref_stats[z]['std']) for x in pop_diff_dict[z]['mean']] for z in pop_diff_dict.keys()
+        }
+
 
     ####################################
     ####################################
@@ -213,10 +267,10 @@ for stat_request in stat_used:
                 vertical= [surface[x] for x in range(len(y)) if y[x] > ref_stats[pop]['lcl']]
                 vertical= vertical[:1]
 
-                pop_thresh_dict[pop_name][stat_request]= vertical[0]
-
                 ver_bar= [.99,1.002]
+
                 if len(vertical):
+                    pop_thresh_dict[pop_name][stat_request]= vertical[0]
                     plt.plot(vertical * 2,ver_bar,color='red',linestyle=style)
 
                 if plot_var:
@@ -264,7 +318,6 @@ for stat_request in stat_used:
         dtup_len= [len(x) for x in dtup]
 
         min_len= min(dtup_len)
-        #print(dtup)
         sample_dtup= [np.random.choice(x, min_len,replace= False) for x in dtup]
         #
 
@@ -302,7 +355,12 @@ for stat_request in stat_used:
         pop_name= pop_names_dict[pop]
         pop_col= pop_colors[pop_name]
         x= counts_dict[pop]['sizes']
-        y= [np.log(x) for x in average_cdf[pop]]
+
+        yproxy= average_cdf[pop]
+        yproxy= np.array(yproxy,dtype= float)
+        yproxy[yproxy == 0] = 1
+        
+        y= [np.log(x) for x in yproxy]
         
         plt.plot(x,y,label= pop_name,color= pop_col)
 

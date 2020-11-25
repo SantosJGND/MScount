@@ -11,5 +11,4 @@ stepup="population"
 python -u VarInc_db.py \
 --species chimp \
 --data local_counts \
---samp 100 \
---steps 50 \
+--pval 0.01

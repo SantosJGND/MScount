@@ -6,7 +6,11 @@
 module purge
 module load python/3.6.4
 
-stepup="increment" 
+stepup="increment"
+
+## or replace for the deployment_agave_v1.3 directory if launching from somewhere else. 
+## 
+cd ../
 
 ## if stepup == population:
 # sampling is done from args.samp (below) to N (total N in vcf) in steps of args.steps (below).
@@ -20,8 +24,11 @@ stepup="increment"
 ## npacks: the number of vcfs processed by bash job. 
 # e.g. npacks == 1 deploys as many jobs as there are vcf dirs.
 
+## the --db_dir can also be given a full path. otherwise will be housed in the homedir.
+
+
 python -u mcount_sdtlone_dploy.py \
---species human \
+--species chimp \
 --data FP \
 --db_dir db_dir \
 -t 1:00:00 \
@@ -35,4 +42,4 @@ python -u mcount_sdtlone_dploy.py \
 --haps \
 --npacks 1 \
 --deployment agave \
---log_dir logs
+--logdir logs

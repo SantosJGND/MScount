@@ -69,7 +69,7 @@ def info_array_collect(db_dir):
 	lines= []
 	print(list_neigh)
 
-	for dbf in list_neigh[:6]:
+	for dbf in list_neigh:
 		simdb= db_dir + dbf
 		print()
 		counts, muts, header= read_simCounts(simdb)
@@ -109,6 +109,8 @@ def sim_countPrep(count_array, info_array, sim, sim_idx):
 	#print(sim_idx)
 	print(count_array.shape)
 	ncounts= np.sum(lines,axis= 1)
+	array_zeroes= ncounts == 0
+	ncounts[array_zeroes]= 1
 
 	info_sim= info_array[sim_idx,:]
 
@@ -117,6 +119,7 @@ def sim_countPrep(count_array, info_array, sim, sim_idx):
 	pop_list= list(set(pop_file))
 
 	props= lines.T / ncounts
+	
 	props= props.T
 	#print(sim)
 	#print(props.shape)
@@ -171,8 +174,15 @@ def stats_condense(props, pop_list, size_file, pop_file):
 	    pop: np.mean(g,axis= 0) for pop,g in ref_props.items()
 	}
 
+	proxy_refs= {}
+	for pop,g in ref_props.items():
+		mask_null= g == 0
+		newg= np.array(g)
+		newg[mask_null]= 1
+		proxy_refs[pop]= newg
+
 	pop_diffs= {
-	    pop: (ref_props[pop] - g) / ref_props[pop] for pop,g in pop_props.items()
+	    pop: (ref_props[pop] - g) / proxy_refs[pop] for pop,g in pop_props.items()
 	}
 
 	return pop_diffs, ref_props, pop_props, pop_refkeys, pop_size_idx_dict, pop_size_dict, pop_idx_dict
@@ -261,8 +271,6 @@ def sim_VarSub(count_array,info_array,row= 48,col= 4,si_max= 100):
 			continue
 
 		pop_diffs, ref_props, pop_props, pop_refkeys, pop_size_idx_dict, pop_size_dict, pop_idx_dict= stats_condense(props, pop_list, size_file, pop_file)
-		
-
 
 		for pop,si_dict in pop_size_idx_dict.items():
 			print(sim,pop)
@@ -280,6 +288,7 @@ def sim_VarSub(count_array,info_array,row= 48,col= 4,si_max= 100):
 
 				for idx in si_idx:
 				    ssamp_dict[pop][si].append(pop_props[pop][idx])
+	
 	counts_dict= {}
 	stats_dict= {}
 
@@ -302,10 +311,8 @@ def sim_VarSub(count_array,info_array,row= 48,col= 4,si_max= 100):
 				'self': dists_self,
 				'ref': dists_ref
 				}
-		print("##### reff pops")
-		print(ref_pop_dict[pop])
+
 		ref_pop_dict[pop]= set_SSD(ref_pop_dict[pop],ref_pop_dict[pop],same= True)
-		print(ref_pop_dict[pop])
 
 	return stats_dict, counts_dict, ref_pop_dict
 

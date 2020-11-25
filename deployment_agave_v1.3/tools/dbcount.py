@@ -10,39 +10,6 @@ from factor_tools.factor_tools import (
 
 ##################
 
-def read_simCounts_old(simdb,tag_split= 'C',pop_tag= '_ss', si_max= 0):
-	'''
-	read file of individual mutation type counts. 
-	first 3 columns= simID, pop, ind. 
-	header= True.
-	'''
-	print(simdb)
-	with open(simdb,'r') as fp:
-		counts= fp.readlines()
-
-	header= counts[0]
-	muts= header.strip().split('\t')[3:]
-	counts= [x.strip().split('\t') for x in counts[1:]]
-
-	counts= np.array(counts)
-
-	if si_max:
-		nsamps= np.array(counts[:,2],dtype= int)
-		nkeep= (nsamps <= si_max) | (nsamps == max(nsamps))
-		counts= counts[nkeep,:]
-
-	pop_names= counts[:,1]
-
-	for idx in range(len(pop_names)):
-		pop= pop_names[idx]
-		if pop_tag in pop:
-			pop= pop[len(pop_tag):].split('.')[0]
-			pop_names[idx]= pop
-
-	counts[:,1]= pop_names
-	
-	return counts, muts, header
-
 
 def read_simCounts(simdb,tag_split= 'C',pop_tag= '_ss', si_max= 0):
 	'''
